@@ -1,0 +1,45 @@
+# Required Secret variables:
+# - HYPER_ACCESS_KEY
+# - HYPER_SECRET_KEY
+# - HYPER_REGION
+
+services:
+  - docker:dind
+
+stages:
+  - build
+  - deploy
+
+variables:
+  CONTAINER_NAME: toundra-server
+  CONTAINER_IMAGE: registry.gitlab.com/toundra/toundra-server:$CI_COMMIT_TAG
+  CONTAINER_SIZE: s3
+  EXPOSE_PORT: 80:8080
+  FLOATING_IP: 185.207.112.173
+  DB_CONTAINER_NAME: toundra-mongodb
+
+build_prod:
+  image: docker:latest
+  stage: build
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker build -t $CONTAINER_IMAGE .
+    - docker push $CONTAINER_IMAGE
+  only:
+    - /^prod-.*$/
+
+deploy_prod:
+  image: debian:latest
+  stage: deploy
+  script:
+    - apt-get update && apt-get install -y wget
+    - wget https://hyper-install.s3.amazonaws.com/hyper-linux-x86_64.tar.gz
+    - tar xzf hyper-linux-x86_64.tar.gz && mv hyper /usr/bin/
+    - hyper config --accesskey=$HYPER_ACCESS_KEY --secretkey=$HYPER_SECRET_KEY --default-region=$HYPER_REGION
+    - hyper login --username=$CI_REGISTRY_USER --password=$CI_REGISTRY_PASSWORD --email=$GITLAB_USER_EMAIL registry.gitlab.com
+    - hyper pull $CONTAINER_IMAGE
+    - hyper ps -a | grep " $CONTAINER_NAME " && hyper rm -f $CONTAINER_NAME
+    - hyper run -d --name $CONTAINER_NAME -p $EXPOSE_PORT --restart=always --size=$CONTAINER_SIZE --link $DB_CONTAINER_NAME:postgres $CONTAINER_IMAGE
+    - hyper fip attach -f $FLOATING_IP $CONTAINER_NAME
+  only:
+    - /^prod-.*$/

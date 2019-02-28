@@ -1,0 +1,6 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts"],
+  "exec": "cross-env NODE_ENV=development node --inspect-brk -r ts-node/register src/main.ts"
+}

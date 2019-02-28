@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+  main-api:
+    build: .
+    ports:
+      - 8080
+    depends_on:
+      - database
+      # - business-api
+
+  # business-api:
+  #   build: ./api
+  #   ports: 8081
+
+  database:
+    container_name: $DATABASE_TYPE
+    image: $DATABASE_TYPE # postgres or mongo
+    ports:
+      - $DATABASE_PORT
+    environment:
+      # POSTGRES_DB: $DATABASE_NAME
+      # POSTGRES_USER: $DATABASE_USERNAME
+      # POSTGRES_PASSWORD: $DATABASE_PASSWORD
+      # PGDATA: /data/$DATABASE_TYPE
+      MONGODB_DB: $DATABASE_NAME
+      MONGODB_USER: $DATABASE_USERNAME
+      MONGODB_PASSWORD: $DATABASE_PASSWORD
+    volumes:
+      - data-volume:/data/db
+
+volumes: data-volume:
